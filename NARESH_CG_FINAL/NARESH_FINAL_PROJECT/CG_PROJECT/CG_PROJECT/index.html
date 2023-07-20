@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>WebGL - Phong Shading</title>
+  <link href='css/colorpicker.css' type='text/css' rel='stylesheet' />
+  <link href='css/jquery-ui-1.8.13.custom.css' type='text/css' rel='stylesheet' />
+  <link href='css/style.css' type='text/css' rel='stylesheet' />
+  <script type='text/javascript' src='./js/jquery-1.5.1.min.js'></script>
+  <script type='text/javascript' src='./js/jquery-ui-1.8.13.custom.min.js'></script>
+  <script type='text/javascript' src='./js/colorpicker.js'></script>
+  <script type='text/javascript' src="./js/renderer.js"></script>
+  <script type='text/javascript' src="./js/shapes.js"></script>
+  <script type="text/javascript" src="./js/MV.js"></script>
+  <script type="text/javascript" src="./js/webgl-utils.js"></script>
+  <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js" integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script> -->
+
+  <script type="text/javascript">
+    var renderer = 0;
+
+    function run() {
+      var id = document.getElementById("select_example_id").value;
+      var vertSrc = document.getElementById("GouraudVert").value;
+      var fragSrc = document.getElementById("GouraudFrag").value;
+
+      document.getElementById("code_frag").value = fragSrc;
+      document.getElementById("code_vert").value = vertSrc;
+      renderer = new Renderer("myWebGLCanvas", vertSrc, fragSrc);
+      renderer.init();
+    }
+
+    function updateRenderer() {
+      var vertSrc = document.getElementById("code_vert").value;
+      var fragSrc = document.getElementById("code_frag").value;
+
+      renderer.updateShader(vertSrc, fragSrc);
+      renderer.display();
+
+    }
+
+    var interval = setInterval(timerFunc, 40);
+
+    function timerFunc() {
+      var offset = 1.0;
+      renderer.t += offset;
+      renderer.display();
+    }
+
+    function modeChanged() {
+      var d = document.getElementById("select_id").value;
+      renderer.modeVal = d;
+    }
+
+    function modelChanged() {
+      var d = document.getElementById("select_id2").value;
+      renderer.updateModel(d);
+      renderer.display();
+    }
+
+    function exampleChanged() {
+      var d = parseInt(document.getElementById("select_example_id").value);
+      switch (d) {
+        default:
+        case 1:
+          document.getElementById("code_frag").value = document.getElementById("GouraudFrag").value;
+          document.getElementById("code_vert").value = document.getElementById("GouraudVert").value;
+          break;
+        case 2:
+          document.getElementById("code_frag").value = document.getElementById("PhongFrag").value;
+          document.getElementById("code_vert").value = document.getElementById("PhongVert").value;
+          break;
+        case 3:
+          document.getElementById("code_frag").value = document.getElementById("wireFrameFrag").value;
+          document.getElementById("code_vert").value = document.getElementById("wireFrameVert").value;
+          break;
+
+      }
+      updateRenderer();
+    }
+
+    //  Code for input type="file";
+    function loadFile(textContent) {
+      // call to function in renderer file.
+      renderer.loadFile(textContent);
+    }
+  </script>
+</head>
+
+<body onload="run();">
+  <p id="code_vert_error"></p>
+  <p id="code_frag_error"></p>
+  </td>
+  </tr>
+  <h1>3D RENDERING Final Project</h1>
+  <table>
+    <tr style="vertical-align:top;">
+      <td><canvas id="myWebGLCanvas" width="600" height="400" style="background-color: black;">Your browser does not
+          support the canvas
+          element</canvas><br>
+        <h3>Shading:</h3>
+        <select onchange="exampleChanged()" id="select_example_id">
+          <option value="1">Gouraud Shading</option>
+          <option value="2">Phong Shading</option>
+          <option value="3">Wireframe Shading</option>
+        </select>
+        <h3>Shape:</h3>
+        <select onchange="modelChanged()" id="select_id2">
+          <option value="./cube.txt">Cube</option>
+          <option value="./sphere.txt">Sphere</option>
+          <option value="./teapot.txt">Teapot</option>
+        </select>
+        <h3>Mouse Controls:</h3>
+        <select onchange="modificationChanged()" id="select_id3">
+          <option value="">Mouse Controls</option>
+          <option value="translate">Translate</option>
+          <option value="scale">Scale</option>
+          <option value="rotate">Rotate</option>
+        </select>
+        
+        <table>
+          <tr style="border:1px solid rgb(1, 1, 150)">
+            <td align='right'>Ambient reflection:</td>
+            <td id='slider-ka-value' width='30px'>1.0</td>
+            <td>
+              <div id='slider-ka' />
+            </td>
+            <td align='right'>Ambient color:</td>
+            <td colspan='2'>
+              <div id='colorSelectorAmbient' class='colorSelector'>
+                <div style='background-color:rgb(49, 184, 44)'></div>
+              </div>
+            </td>
+            <td colspan="2">&nbsp;</td>
+            <td>Light position:</td>
+          </tr>
+          <tr style="border:1px solid black">
+            <td align='right'>Diffuse reflection:</td>
+            <td id='slider-kd-value' width='30px'>1.0</td>
+            <td>
+              <div id='slider-kd' />
+            </td>
+            <td align='right'>Diffuse Color:</td>
+            <td colspan='2'>
+              <div id='colorSelectorDiffuse' class='colorSelector'>
+                <div style='background-color:rgba(74, 222, 11, 0.208)'></div>
+              </div>
+            </td>
+            <td align='right' width="30px">X:</td>
+            <td id='slider-x-value' width='30px' align='center'>1</td>
+            <td width='150px'>
+              <div id='slider-x' />
+            </td>
+          </tr>
+          <tr style="border:1px solid black">
+            <td align='right'>Specular reflection:</td>
+            <td id='slider-ks-value' width='30px'>1.0</td>
+            <td>
+              <div id='slider-ks' />
+            </td>
+            <td align='right'>Specular Color:</td>
+            <td colspan='2'>
+              <div id='colorSelectorSpecular' class='colorSelector'>
+                <div style='background-color:rgba(74, 222, 11, 0.208)'></div>
+              </div>
+            </td>
+            <td align='right'>Y:</td>
+            <td id='slider-y-value' width='30px' align='center'>1</td>
+            <td width='150px'>
+              <div id='slider-y' />
+            </td>
+          </tr>
+          <tr style="border:1px solid rgba(74, 222, 11, 0.208)">
+            <td align='right'>Shininess:</td>
+            <td id='slider-s-value' width='30px'>80</td>
+            <td width='150px'>
+              <div id='slider-s' />
+            </td>
+            <td>&nbsp;Background Color:</td>
+            <td colspan='2'>
+              <div id='colorSelectorBg' class='colorSelector'>
+                <div style='background-color:rgba(74, 222, 11, 0.208)'></div>
+              </div>
+            </td>
+            <td align='right'>Z:</td>
+            <td id='slider-z-value' width='30px' align='center'>-1</td>
+            <td width='150px'>
+              <div id='slider-z' />
+            </td>
+          </tr>
+        </table>
+      </td>
+      <table>
+        <tr>
+            <td>Eye position:</td>
+            <td align='right' width="30px">X:</td>
+            <td id='slider-x-evalue' width='30px' align='center'>1</td>
+            <td width='150px'>
+                <div id='eslider-x' />
+            </td>
+            <td align='right'>Y:</td>
+            <td id='slider-y-evalue' width='30px' align='center'>1</td>
+            <td width='150px'>
+                <div id='eslider-y' />
+            </td>
+            <td align='right'>Z:</td>
+            <td id='slider-z-evalue' width='30px' align='center'>-1</td>
+            <td width='150px'>
+                <div id='eslider-z' />
+            </td>
+        </tr>
+        <tr>
+            <!-- up position  -->
+            <td>UP position:</td>
+            <td align='right' width="30px">X:</td>
+            <td id='slider-x-uvalue' width='30px' align='center'>1</td>
+            <td width='150px'>
+                <div id='uslider-x' />
+            </td>
+            <td align='right'>Y:</td>
+            <td id='slider-y-uvalue' width='30px' align='center'>1</td>
+            <td width='150px'>
+                <div id='uslider-y' />
+            </td>
+            <td align='right'>Z:</td>
+            <td id='slider-z-uvalue' width='30px' align='center'>-1</td>
+            <td width='150px'>
+                <div id='uslider-z' />
+            </td>
+        </tr>
+
+        <!-- At position  -->
+        <tr>
+            <td>At position:</td>
+            <td align='right' width="30px">X:</td>
+            <td id='slider-x-avalue' width='30px' align='center'>1</td>
+            <td width='150px'>
+                <div id='aslider-x' />
+            </td>
+            <td align='right'>Y:</td>
+            <td id='slider-y-avalue' width='30px' align='center'>1</td>
+            <td width='150px'>
+                <div id='aslider-y' />
+            </td>
+            <td align='right'>Z:</td>
+            <td id='slider-z-avalue' width='30px' align='center'>-1</td>
+            <td width='150px'>
+                <div id='aslider-z' />
+            </td>
+        </tr>
+
+        <!-- Top position  -->
+        <td>Top position:</td>
+        <td align='right' width="30px">X:</td>
+        <td id='slider-x-tvalue' width='30px' align='center'>1</td>
+        <td width='150px'>
+            <div id='tslider-x' />
+        </td>
+        <td align='right'>Y:</td>
+        <td id='slider-y-tvalue' width='30px' align='center'>1</td>
+        <td width='150px'>
+            <div id='tslider-y' />
+        </td>
+        <td align='right'>Z:</td>
+        <td id='slider-z-tvalue' width='30px' align='center'>-1</td>
+        <td width='150px'>
+            <div id='tslider-z' />
+        </td>
+      </td>
+      <td>
+        <!-- <h3>Vertex Shader</h3> -->
+        <textarea cols="55" rows="40" class="code_input" id="code_vert" wrap="off" hidden></textarea><br>
+        <!-- <h3>Fragment Shader</h3> -->
+        <textarea cols="55" rows="40" class="code_input" id="code_frag" wrap="off" hidden></textarea><br>
+      </td>
+  </table>
+
+  <script>
+    $('#slider-s').slider({ value: 80, min: 1, max: 128, step: 1, range: "min", slide: updateShininess });
+    $('#slider-ka').slider({ value: 1, max: 1, step: 0.01, range: "min", slide: updateLightAmbientTerm });
+    $('#slider-kd').slider({ value: 1, max: 1, step: 0.01, range: "min", slide: updateLightDiffuseTerm });
+    $('#slider-ks').slider({ value: 1, max: 1, step: 0.01, range: "min", slide: updateLightSpecularTerm });
+    $('#slider-x').slider({ value: 1, min: -10, max: 10, step: 0.1, slide: updateLight, change: updateLight });
+    $('#slider-y').slider({ value: 1, min: -10, max: 10, step: 0.1, slide: updateLight, change: updateLight });
+    $('#slider-z').slider({ value: -1, min: -10, max: 10, step: 0.1, slide: updateLight, change: updateLight });
+    //For eye Position
+    $('#eslider-x').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_eye,
+            change: update_eye
+        });
+        $('#eslider-y').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_eye,
+            change: update_eye
+        });
+        $('#eslider-z').slider({
+            value: -1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_eye,
+            change: update_eye
+        });
+
+        //For up position
+        $('#uslider-x').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_up,
+            change: update_up
+        });
+        $('#uslider-y').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_up,
+            change: update_up
+        });
+        $('#uslider-z').slider({
+            value: -1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_up,
+            change: update_up
+        });
+        // For At position
+        $('#aslider-x').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_at,
+            change: update_at
+        });
+        $('#aslider-y').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_at,
+            change: update_at
+        });
+        $('#aslider-z').slider({
+            value: -1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_at,
+            change: update_at
+        });
+        // For Top Position
+        $('#tslider-x').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_top,
+            change: update_top
+        });
+        $('#tslider-y').slider({
+            value: 1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_top,
+            change: update_top
+        });
+        $('#tslider-z').slider({
+            value: -1,
+            min: -10,
+            max: 10,
+            step: 0.1,
+            slide: update_top,
+            change: update_top
+        });
+
+
+    function updateShininess(event, ui) {
+      renderer.shininess = ui.value;
+      $('#slider-s-value').html(ui.value);
+    }
+    function updateLightAmbientTerm(event, ui) {
+      renderer.kaVal = ui.value;
+      $('#slider-ka-value').html(ui.value);
+    }
+    function updateLightDiffuseTerm(event, ui) {
+      renderer.kdVal = ui.value;
+      $('#slider-kd-value').html(ui.value);
+    }
+    function updateLightSpecularTerm(event, ui) {
+      renderer.ksVal = ui.value;
+      $('#slider-ks-value').html(ui.value);
+    }
+
+    // update eye
+    function update_eye() {
+            var x = $('#eslider-x').slider("value");
+            var y = $('#eslider-y').slider("value");
+            var z = $('#eslider-z').slider("value");
+            
+            renderer.eyePos = [x, y, z];
+            $('#slider-x-evalue').html(x);
+            $('#slider-y-evalue').html(y);
+            $('#slider-z-evalue').html(z);
+        }
+
+        // update up
+        function update_up() {
+            var x = $('#uslider-x').slider("value");
+            var y = $('#uslider-y').slider("value");
+            var z = $('#uslider-z').slider("value");
+          
+            renderer.upPos = [x, y, z];
+            $('#slider-x-uvalue').html(x);
+            $('#slider-y-uvalue').html(y);
+            $('#slider-z-uvalue').html(z);
+        }
+        //update at
+        function update_at() {
+            var x = $('#aslider-x').slider("value");
+            var y = $('#aslider-y').slider("value");
+            var z = $('#aslider-z').slider("value");
+            
+            renderer.atPos = [x, y, z];
+            $('#slider-x-avalue').html(x);
+            $('#slider-y-avalue').html(y);
+            $('#slider-z-avalue').html(z);
+        }
+
+        //update top
+        function update_top() {
+            var x = $('#tslider-x').slider("value");
+            var y = $('#tslider-y').slider("value");
+            var z = $('#tslider-z').slider("value");
+            
+            renderer.atPos = [x, y, z];
+            $('#slider-x-tvalue').html(x);
+            $('#slider-y-tvalue').html(y);
+            $('#slider-z-tvalue').html(z);
+        }
+
+    function updateLight() {
+      var x = $('#slider-x').slider("value");
+      var y = $('#slider-y').slider("value");
+      var z = $('#slider-z').slider("value");
+      renderer.lightPos = [x, y, z];
+      $('#slider-x-value').html(x);
+      $('#slider-y-value').html(y);
+      $('#slider-z-value').html(z);
+    }
+    
+    function updateClearColor(r, g, b) {
+      clearColor = [r, g, b, 1.0];
+    }
+
+    $('#colorSelectorAmbient').ColorPicker({
+      onSubmit: function (hsb, hex, rgb, el) {
+        $(el).val(hex);
+        $(el).ColorPickerHide();
+      },
+      color: '#341900',
+      onShow: function (colpkr) {
+        $(colpkr).fadeIn(500);
+        return false;
+      },
+      onHide: function (colpkr) {
+        $(colpkr).fadeOut(500);
+        return false;
+      },
+      onChange: function (hsb, hex, rgb) {
+        $('#colorSelectorAmbient div').css('backgroundColor', '#' + hex);
+        renderer.ambientColor = [rgb.r / 256, rgb.g / 256, rgb.b / 256];
+      },
+      onBeforeShow: function (colpkr) {
+        $(colpkr).ColorPickerSetColor('rgb(0.2,0.1,0.0)');
+      }
+    })
+
+    $('#colorSelectorDiffuse').ColorPicker({
+      onSubmit: function (hsb, hex, rgb, el) {
+        $(el).val(hex);
+        $(el).ColorPickerHide();
+      },
+      color: '#cc6600',
+      onShow: function (colpkr) {
+        $(colpkr).fadeIn(500);
+        return false;
+      },
+      onHide: function (colpkr) {
+        $(colpkr).fadeOut(500);
+        return false;
+      },
+      onChange: function (hsb, hex, rgb) {
+        $('#colorSelectorDiffuse div').css('backgroundColor', '#' + hex);
+        renderer.diffuseColor = [rgb.r / 256, rgb.g / 256, rgb.b / 256];
+      },
+      onBeforeShow: function (colpkr) {
+        $(colpkr).ColorPickerSetColor('rgb(0.8,0.4,0.0)');
+      }
+    })
+
+    $('#colorSelectorSpecular').ColorPicker({
+      onSubmit: function (hsb, hex, rgb, el) {
+        $(el).val(hex);
+        $(el).ColorPickerHide();
+      },
+      color: '#ffffff',
+      onShow: function (colpkr) {
+        $(colpkr).fadeIn(500);
+        return false;
+      },
+      onHide: function (colpkr) {
+        $(colpkr).fadeOut(500);
+        return false;
+      },
+      onChange: function (hsb, hex, rgb) {
+        $('#colorSelectorSpecular div').css('backgroundColor', '#' + hex);
+        renderer.specularColor = [rgb.r / 256, rgb.g / 256, rgb.b / 256];
+      },
+      onBeforeShow: function (colpkr) {
+        $(colpkr).ColorPickerSetColor('rgb(1.0,1.0,1.0)');
+      }
+    })
+
+    $('#colorSelectorBg').ColorPicker({
+      onSubmit: function (hsb, hex, rgb, el) {
+        $(el).val(hex);
+        $(el).ColorPickerHide();
+      },
+      color: '#0065b3',
+      onShow: function (colpkr) {
+        $(colpkr).fadeIn(500);
+        return false;
+      },
+      onHide: function (colpkr) {
+        $(colpkr).fadeOut(500);
+        return false;
+      },
+      onChange: function (hsb, hex, rgb) {
+        $('#colorSelectorBg div').css('backgroundColor', '#' + hex);
+        renderer.clearColor = [rgb.r / 256, rgb.g / 256, rgb.b / 256];
+      },
+      onBeforeShow: function (colpkr) {
+        $(colpkr).ColorPickerSetColor('rgb(0.0,0.4,0.7)');
+      }
+    })
+  </script>
+
+  <!-- Phong shader -->
+  <textarea id="PhongVert" style="display: none;">
+  attribute vec3 position;
+  attribute vec3 normal;
+  uniform mat4 projection, modelview, normalMat;
+  varying vec3 normalInterp;
+  varying vec3 vertPos;
+  uniform mat4 rotationMatrix;
+  uniform float scalingFactor;
+
+  void main(){
+    vec4 newPosition = vec4(position,1.0) * rotationMatrix;
+    vec4 vertPos4 = modelview * newPosition;
+    vertPos = vec3(vertPos4) / vertPos4.w;
+    normalInterp = vec3(normalMat) * normal;
+    gl_Position = projection * vertPos4 * vec4(scalingFactor, scalingFactor, scalingFactor, 1.0);
+  }
+  </textarea>
+
+  <textarea id="PhongFrag" style="display: none;">
+  precision mediump float;
+  varying vec3 normalInterp;  // Surface normal
+  varying vec3 vertPos;       // Vertex position
+  uniform float shininessVal; // Shininess
+  uniform float Ka;
+  uniform float Kd;
+  uniform float Ks;
+  uniform int mode;
+  // Material color
+  uniform vec3 ambientColor;
+  uniform vec3 diffuseColor;
+  uniform vec3 specularColor;
+  uniform vec3 ambientColorM;
+  uniform vec3 diffuseColorM;
+  uniform vec3 specularColorM;
+  uniform vec3 lightPos; // Light position
+
+
+  uniform vec3 eyePos; // eye position
+  uniform vec3 upPos;// up position
+  uniform vec3 topPos;// top position
+  uniform vec3 atPos;// at position
+  uniform vec3 bottomPos;// bottom position
+  uniform vec3 leftPos;// left position
+  uniform vec3 rightPos;//right position
+
+
+  
+
+  void main() {
+    vec3 N = normalize(normalInterp);
+    vec3 L = normalize(lightPos - vertPos);
+
+    vec3 E = normalize(eyePos - vertPos);
+    vec3 U = normalize(upPos -vertPos);
+    vec3 A = normalize(atPos -vertPos);
+    vec3 T = normalize(topPos -vertPos);
+    vec3 B = normalize(bottomPos - vertPos);
+    vec3 Left = normalize(leftPos - vertPos);
+    vec3 R = normalize(rightPos - vertPos);
+
+    // Lambert's cosine law
+    float lambertian = max(dot(N, L), 0.0);
+    float specular = 0.0;
+    if(lambertian > 0.0) {
+
+      vec3 TOP = reflect(T, N);//top position 
+      vec3 AT = reflect(A, N);//At position 
+      vec3 UP = reflect(U, N); //up position
+      vec3 Eye = reflect(E, N);   //Eyeposition
+      vec3 Bottom = reflect(B, N);//Bottom position 
+      vec3 LEFT = reflect(Left, N);// Left position
+      vec3 RIGHT = reflect(R, N);// Left position
+
+
+      vec3 R = reflect(-L, N);      // Reflected light vector
+      vec3 V = normalize(-vertPos); // Vector to viewer
+      // Compute the specular term
+      float specAngle = max(dot(R, V), 0.0);
+
+
+      float eyeAngle= max(dot(Eye, V), 0.0);
+      float UpAngle= max(dot(UP, V), 0.0);
+      float ATAngle= max(dot(AT, V), 0.0);
+      float TOPAngle = max(dot(TOP, V), 0.0);
+      float BottomAngle= max(dot(Bottom, V), 0.0);
+      float LeftAngle= max(dot(LEFT, V), 0.0);
+      float RightAngle= max(dot(RIGHT, V), 0.0);
+
+
+      specular = pow(specAngle, shininessVal);
+    }
+    gl_FragColor = vec4(ambientColor * Ka +
+                        lambertian * diffuseColor * Kd+
+                        specular * specularColor * Ks, 1.0);
+  
+  if(mode == 2) gl_FragColor = vec4(Ka * ambientColor, 1.0);
+  // only diffuse
+  if(mode == 3) gl_FragColor = vec4(Kd * lambertian * diffuseColor, 1.0);
+  // only specular
+  if(mode == 4) gl_FragColor = vec4(Ks * specular * specularColor, 1.0);
+  }
+  </textarea>
+
+  <!-- Gouraud shader -->
+  <textarea id="GouraudVert" style="display: none;">
+  attribute vec3 position;
+  attribute vec3 normal;
+  uniform mat4 projection, modelview, normalMat;
+  uniform mat4 rotationMatrix;
+  varying vec3 normalInterp;
+  varying vec3 vertPos;
+  uniform int mode;   // Rendering mode
+  uniform float shininessVal; // Shininess
+  // Material color
+  uniform float Ka;
+  uniform float Kd;
+  uniform float Ks;
+  uniform vec3 ambientColor;
+  uniform vec3 diffuseColor;
+  uniform vec3 specularColor;
+  uniform vec3 ambientColorM;
+  uniform vec3 diffuseColorM;
+  uniform vec3 specularColorM;
+  uniform vec3 lightPos; // Light position
+
+
+  uniform vec3 atPos; //At position
+  uniform vec3 eyePos; // eye position
+  uniform vec3 upPos;// up position
+  uniform vec3 topPos;// top position
+  uniform vec3 bottomPos;// bottom position
+  uniform vec3 leftPos;// left position
+  uniform vec3 rightPos;//right position
+
+
+  varying vec4 color; //color
+  uniform float scalingFactor;
+  uniform vec4 translate;
+
+  void main(){
+    vec4 newPosition = (vec4(position,1.0) * rotationMatrix) + translate;
+    vec4 vertPos4 = modelview * newPosition;
+    vertPos = vec3(vertPos4) / vertPos4.w;
+    normalInterp = vec3(normalMat * vec4(normal, 0.0));
+    gl_Position = projection * vertPos4 * vec4(scalingFactor, scalingFactor, scalingFactor, 1.0);
+
+    vec3 N = normalize(normalInterp);
+    vec3 L = normalize(lightPos - vertPos);
+
+
+    vec3 E = normalize(eyePos - vertPos);
+    vec3 U = normalize(upPos -vertPos);
+    vec3 A = normalize(atPos -vertPos);
+    vec3 T = normalize(topPos -vertPos);
+    vec3 B = normalize(bottomPos - vertPos);
+    vec3 Left = normalize(leftPos - vertPos);
+    vec3 R = normalize(rightPos - vertPos);
+
+
+    // Lambert's cosine law
+    float lambertian = max(dot(N, L), 0.0);
+    float specular = 0.0;
+    if(lambertian > 0.0) {
+      vec3 R = reflect(-L, N);      // Reflected light vector
+
+      vec3 TOP = reflect(T, N);//At position 
+      vec3 AT = reflect(A, N);//At position 
+      vec3 UP = reflect(U, N); //up position
+      vec3 Eye = reflect(E, N);   //Eyeposition
+      vec3 Bottom = reflect(B, N);//Bottom position
+      vec3 LEFT = reflect(Left, N);// Left position
+      vec3 RIGHT = reflect(R, N);// Left position
+
+
+      vec3 V = normalize(-vertPos); // Vector to viewer
+      // Compute the specular term
+      float specAngle = max(dot(R, V), 0.0);
+
+      float eyeAngle= max(dot(Eye, V), 0.0);
+      float UpAngle= max(dot(UP, V), 0.0);
+      float ATAngle= max(dot(AT, V), 0.0);
+      float TOPAngle = max(dot(TOP, V), 0.0);
+      float BottomAngle= max(dot(Bottom, V), 0.0);
+      float LeftAngle= max(dot(LEFT, V), 0.0);
+      float RightAngle= max(dot(RIGHT, V), 0.0);
+
+
+      specular = pow(specAngle, shininessVal);
+      
+    }
+    color = vec4(ambientColor  * Ka+
+                 lambertian * diffuseColor * Kd +
+                 specular * specularColor * Ks, 1.0);
+
+
+  // only ambient
+  if(mode == 2) color = vec4(Ka * ambientColor, 1.0);
+  // only diffuse
+  if(mode == 3) color = vec4(Kd * lambertian * diffuseColor, 1.0);
+  // only specular
+  if(mode == 4) color = vec4(Ks * specular * specularColor, 1.0);
+  }
+  </textarea>
+
+  <textarea id="GouraudFrag" style="display: none;">
+  precision mediump float;
+
+  varying vec4 color;
+  void main() {
+    gl_FragColor = color;
+  }
+  </textarea>
+  
+  <!-- wireFramw shader -->
+  <textarea id="wireFrameVert" style="display: none;">
+    attribute vec3 position;
+    attribute vec3 normal;
+    uniform mat4 projection, modelview, normalMat;
+    varying vec3 normalInterp;
+    varying vec3 vertPos;
+    uniform int mode;
+    uniform float shininessVal; // Shininess
+    // Material color
+    uniform vec3 ambientColor;
+    uniform vec3 diffuseColor;
+    uniform vec3 specularColor;
+    uniform vec3 ambientColorM;
+    uniform vec3 diffuseColorM;
+    uniform vec3 specularColorM;
+    uniform mat4 rotationMatrix;
+    uniform float scalingFactor;
+    uniform vec3 lightPos; // Light position
+
+      uniform vec3 eyePos; // eye position
+     uniform vec3 upPos;// up position
+      uniform vec3 topPos;// top position
+      uniform vec3 atPos;//At position
+      uniform vec3 bottomPos;// bottom position
+      uniform vec3 leftPos;// left position
+      uniform vec3 rightPos;//right position
+
+    varying vec4 color; //color
+
+    void main(){
+      vec4 newPosition = vec4(position,1.0) * rotationMatrix;
+      vec4 vertPos4 = modelview * newPosition;
+      vertPos = vec3(vertPos4) / vertPos4.w;
+      normalInterp = vec3(normalMat * vec4(normal, 0.0));
+      gl_Position = projection * vertPos4 * vec4(scalingFactor, scalingFactor, scalingFactor, 1.0);
+
+      vec3 N = normalize(normalInterp);
+      vec3 L = normalize(lightPos - vertPos);
+      vec3 E = normalize(eyePos - vertPos);
+  vec3 U = normalize(upPos -vertPos);
+  vec3 A = normalize(atPos -vertPos);
+  vec3 T = normalize(topPos -vertPos);
+  vec3 B = normalize(bottomPos - vertPos);
+  vec3 Left = normalize(leftPos - vertPos);
+  vec3 R = normalize(rightPos - vertPos);
+
+
+      // Lambert's cosine law
+      float lambertian = max(dot(N, L), 0.0);
+      float specular = 0.0;
+      if(lambertian > 0.0) {
+        vec3 R = reflect(-L, N);      // Reflected light vector
+
+        vec3 TOP = reflect(T, N);//At position 
+        vec3 AT = reflect(A, N);//At position 
+        vec3 UP = reflect(U, N); //up position
+        vec3 Eye = reflect(E, N);   //Eyeposition
+        vec3 Bottom = reflect(B, N);//Bottom position
+        vec3 LEFT = reflect(Left, N);// Left position
+        vec3 RIGHT = reflect(R, N);// Left position
+
+        vec3 V = normalize(-vertPos); // Vector to viewer
+
+
+
+        // Compute the specular term
+        float specAngle = max(dot(R, V), 0.0);
+
+        float eyeAngle= max(dot(Eye, V), 0.0);
+        float UpAngle= max(dot(UP, V), 0.0);
+        float ATAngle= max(dot(AT, V), 0.0);
+        float TOPAngle = max(dot(TOP, V), 0.0);
+        float BottomAngle= max(dot(Bottom, V), 0.0);
+
+        float LeftAngle= max(dot(LEFT, V), 0.0);
+        float RightAngle= max(dot(RIGHT, V), 0.0);
+
+        specular = pow(specAngle, shininessVal);
+      }
+      color = vec4(ambientColor * ambientColorM+
+                   lambertian * diffuseColor * diffuseColorM +
+                   specular * specularColor * specularColorM, 1.0);
+                   // only ambient
+                   if(mode == 2) color = vec4(ambientColorM * ambientColor, 1.0);
+                   // only diffuse
+                   if(mode == 3) color = vec4(diffuseColorM * lambertian * diffuseColor, 1.0);
+                   // only specular
+                   if(mode == 4) color = vec4(specularColorM * specular * specularColor, 1.0);
+               }
+</textarea>
+
+<textarea id="wireFrameFrag" style="display: none;">
+    precision mediump float;
+
+    varying vec4 color;
+    void main() {
+      gl_FragColor = color;
+    }
+
+</textarea>
+
+
+</body>
+
+</html>
